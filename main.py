@@ -22,14 +22,14 @@ import io
 app = FastAPI(title="Case Study Generator API", description="API for generating academic case studies using Gemini AI")
 templates = Jinja2Templates(directory="templates")
 origins = [
-    "http://localhost.tiangolo.com",
-    "https://localhost.tiangolo.com",
     "http://localhost",
-    "https://writeit-8v58f8ke2-codeboyspaces-projects.vercel.app",
-    "https://writeit-8v58f8ke2-codeboyspaces-projects.vercel.app/",
     "http://localhost:8080",
     "http://localhost:5173",
+    "http://localhost.tiangolo.com",
+    "https://localhost.tiangolo.com",
+    "https://writeit-8v58f8ke2-codeboyspaces-projects.vercel.app",
 ]
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -37,7 +37,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 # Route to serve the HTML frontend
 @app.get("/")
 async def get_form(request: Request):
