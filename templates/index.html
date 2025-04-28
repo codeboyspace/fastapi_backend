@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Case Study Generator</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .status-panel {
+            margin-top: 30px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            display: none;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+        .loading {
+            text-align: center;
+            margin: 20px 0;
+        }
+        #downloadBtn {
+            background-color: #2196F3;
+        }
+        #downloadBtn:hover {
+            background-color: #0b7dda;
+        }
+    </style>
+</head>
+<body>
+    <h1>Academic Case Study Generator</h1>
+    
+    <form id="caseStudyForm">
+        <h2>Student Details</h2>
+        <div class="form-group">
+            <label for="name">Name:</label>
+            <input type="text" id="name" required>
+        </div>
+        <div class="form-group">
+            <label for="className">Class:</label>
+            <input type="text" id="className" required>
+        </div>
+        <div class="form-group">
+            <label for="regNo">Registration Number:</label>
+            <input type="text" id="regNo" required>
+        </div>
+        <div class="form-group">
+            <label for="subjectName">Subject Name:</label>
+            <input type="text" id="subjectName" required>
+        </div>
+        <div class="form-group">
+            <label for="subjectCode">Subject Code:</label>
+            <input type="text" id="subjectCode" required>
+        </div>
+        
+        <h2>Case Study Details</h2>
+        <div class="form-group">
+            <label for="title">Case Study Title:</label>
+            <input type="text" id="title" required>
+        </div>
+        <div class="form-group">
+            <label for="subheadings">Subheadings (comma-separated):</label>
+            <textarea id="subheadings" rows="3" required></textarea>
+        </div>
+        <div class="form-group">
+            <label for="numPages">Target Number of Pages:</label>
+            <input type="number" id="numPages" min="1" value="5" required>
+        </div>
+        
+        <button type="submit">Generate Case Study</button>
+    </form>
+    
+    <div id="statusPanel" class="status-panel">
+        <h2>Generation Status</h2>
+        <div id="statusMessage"></div>
+        <div class="loading" id="loadingIndicator">
+            <p>Generating your case study... This may take a few minutes.</p>
+        </div>
+        <button id="downloadBtn" style="display: none;">Download PDF</button>
+    </div>
+    
+    <script>
+        let currentJobId = null;
+        const API_BASE_URL = '/api'; // Update with your API base URL
+        
+        document.getElementById('caseStudyForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Show status panel and loading indicator
+            document.getElementById('statusPanel').style.display = 'block';
+            document.getElementById('loadingIndicator').style.display = 'block';
+            document.getElementById('downloadBtn').style.display = 'none';
+            document.getElementById('statusMessage').innerHTML = '<p>Submitting your request...</p>';
+            
+            // Prepare the request data
+            const requestData = {
+                title: document.getElementById('title').value,
+                subheadings: document.getElementById('subheadings').value.split(',').map(s => s.trim()),
+                num_pages: parseInt(document.getElementById('numPages').value),
+                user_details: {
+                    name: document.getElementById('name').value,
+                    class_name: document.getElementById('className').value,
+                    reg_no: document.getElementById('regNo').value,
+                    subject_name: document.getElementById('subjectName').value,
+                    subject_code: document.getElementById('subjectCode').value
+                }
+            };
+            
+            try {
+                // Submit generation request
+                const response = await fetch(`/generate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestData),
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                currentJobId = data.job_id;
+                
+                document.getElementById('statusMessage').innerHTML = `<p>Your case study is being generated. Job ID: <code>${currentJobId}</code></p>`;
+                
+                // Start polling for job status
+                pollJobStatus(currentJobId);
+                
+            } catch (error) {
+                document.getElementById('statusMessage').innerHTML = `<p class="error">Error: ${error.message}</p>`;
+                document.getElementById('loadingIndicator').style.display = 'none';
+            }
+        });
+        
+        async function pollJobStatus(jobId) {
+            try {
+                const response = await fetch(`/status/${jobId}`);
+                
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Update status message
+                let statusHtml = `<p>Status: <strong>${data.status}</strong></p>`;
+                
+                if (data.status === 'completed') {
+                    statusHtml += '<p class="success">Your case study PDF has been successfully generated!</p>';
+                    document.getElementById('loadingIndicator').style.display = 'none';
+                    document.getElementById('downloadBtn').style.display = 'block';
+                    document.getElementById('statusMessage').innerHTML = statusHtml;
+                    
+                    // Configure download button
+                    document.getElementById('downloadBtn').onclick = function() {
+                        window.location.href = ` /download/${jobId}`;
+                    };
+                    
+                    return; // Stop polling
+                } else if (data.status === 'failed') {
+                    statusHtml += `<p class="error">Generation failed: ${data.error || 'Unknown error'}</p>`;
+                    document.getElementById('loadingIndicator').style.display = 'none';
+                    document.getElementById('statusMessage').innerHTML = statusHtml;
+                    return; // Stop polling
+                } else {
+                    // Still processing, continue polling
+                    document.getElementById('statusMessage').innerHTML = statusHtml;
+                    setTimeout(() => pollJobStatus(jobId), 5000); // Poll every 5 seconds
+                }
+                
+            } catch (error) {
+                document.getElementById('statusMessage').innerHTML = `<p class="error">Error checking status: ${error.message}</p>`;
+                document.getElementById('loadingIndicator').style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
