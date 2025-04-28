@@ -25,6 +25,7 @@ origins = [
     "http://localhost.tiangolo.com",
     "https://localhost.tiangolo.com",
     "http://localhost",
+    "https://writeit-8v58f8ke2-codeboyspaces-projects.vercel.app",
     "http://localhost:8080",
     "http://localhost:5173",
 ]
